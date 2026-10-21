@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+.DS_Store
+
+# accounts, sessions and repositories of a running hub
+chayyarhub-data/

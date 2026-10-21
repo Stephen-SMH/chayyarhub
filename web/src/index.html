@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ChayYarHub</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="ChayYarHub (ခြေရာ): self-hosted git repositories, code browsing, issues and pull requests." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <script>
+      // Pick the theme before anything paints: the saved choice, else the system's.
+      (function () {
+        var saved;
+        try { saved = localStorage.getItem('theme'); } catch (e) {}
+        document.documentElement.dataset.theme = saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      })();
+    </script>
+  </head>
+  <body>
+    <cy-root></cy-root>
+  </body>
+</html>

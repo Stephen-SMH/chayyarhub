@@ -1,0 +1,19 @@
+{
+  "name": "chayyarhub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A self-hosted git hub: repositories, code browsing, issues and pull requests",
+  "author": "Soe Moe Htet (Stephen)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "scripts": {
+    "setup": "npm --prefix server ci && npm --prefix web ci",
+    "build": "npm --prefix web run build && npm --prefix server run build",
+    "start": "npm --prefix server run start:prod",
+    "dev:server": "npm --prefix server run start:dev",
+    "dev:web": "npm --prefix web start",
+    "test": "npm --prefix server test && npm --prefix server run test:e2e && npm --prefix web test -- --watch=false"
+  }
+}
