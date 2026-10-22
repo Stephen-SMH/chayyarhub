@@ -13,7 +13,7 @@ import { RepoContext } from './context';
     <div class="page narrow">
       @if (ctx.info()?.signed_in) {
         <form class="stack" (ngSubmit)="create()">
-          <h1 style="font-size: 22px">New issue</h1>
+          <h2 style="font-size: 22px">New issue</h2>
           @if (error()) {
             <div class="alert" role="alert">{{ error() }}</div>
           }
@@ -27,7 +27,7 @@ import { RepoContext } from './context';
         </form>
       } @else {
         <div class="empty">
-          <i class="ph ph-lock-simple"></i>
+          <i aria-hidden="true" class="ph ph-lock-simple"></i>
           <a class="link" routerLink="/login" [queryParams]="{ next: here }">Sign in</a> to open an issue.
         </div>
       }

@@ -12,7 +12,7 @@ import { RepoContext } from './context';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page narrow stack">
-      <h1 style="font-size: 22px">Branches</h1>
+      <h2 style="font-size: 22px">Branches</h2>
       @if (data.hasValue()) {
         <div class="card rows">
           @for (row of data.value().branches; track row.branch.name) {
@@ -29,7 +29,7 @@ import { RepoContext } from './context';
                   <span class="dels">{{ row.behind }}</span> behind · <span class="adds">{{ row.ahead }}</span> ahead
                 </span>
                 @if (row.pull) {
-                  <a class="btn" style="min-height: 36px" [routerLink]="ctx.link('pull', '' + row.pull)"><i class="ph ph-git-pull-request state-open"></i>#{{ row.pull }}</a>
+                  <a class="btn" style="min-height: 36px" [routerLink]="ctx.link('pull', '' + row.pull)"><i aria-hidden="true" class="ph ph-git-pull-request state-open"></i>#{{ row.pull }}</a>
                 } @else if (row.ahead) {
                   <a class="btn" style="min-height: 36px" [routerLink]="ctx.link('compare')" [queryParams]="{ base: data.value().default_branch, head: row.branch.name }">New pull request</a>
                 }

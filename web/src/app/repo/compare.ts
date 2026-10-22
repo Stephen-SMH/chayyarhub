@@ -18,11 +18,11 @@ import { RepoContext } from './context';
     @let m = ctx.info()!;
     <div class="page stack" style="max-width: 1040px">
       <div>
-        <h1 style="font-size: 22px">Open a pull request</h1>
+        <h2 style="font-size: 22px">Open a pull request</h2>
         <p class="soft" style="margin: 6px 0 0">Choose the branch with your changes and the branch to merge them into.</p>
       </div>
       <section class="card card-body cluster">
-        <i class="ph ph-git-pull-request faint" style="font-size: 20px"></i>
+        <i aria-hidden="true" class="ph ph-git-pull-request faint" style="font-size: 20px"></i>
         <label class="cluster" style="gap: 8px">
           <span class="faint">base:</span>
           <select class="input mono" style="width: auto" [ngModel]="base()" (ngModelChange)="choose($event, head())">
@@ -31,7 +31,7 @@ import { RepoContext } from './context';
             }
           </select>
         </label>
-        <i class="ph ph-arrow-left faint"></i>
+        <i aria-hidden="true" class="ph ph-arrow-left faint"></i>
         <label class="cluster" style="gap: 8px">
           <span class="faint">compare:</span>
           <select class="input mono" style="width: auto" [ngModel]="head()" (ngModelChange)="choose(base(), $event)">
@@ -44,16 +44,16 @@ import { RepoContext } from './context';
           @let c = cmp.value();
           @if (c.commits.length) {
             @if (c.mergeable) {
-              <span class="state-open"><i class="ph ph-check"></i> Able to merge.</span>
+              <span class="state-open"><i aria-hidden="true" class="ph ph-check"></i> Able to merge.</span>
             } @else {
-              <span style="color: var(--warn-ink)"><i class="ph ph-warning"></i> Can't merge automatically: {{ c.conflicts.join(', ') }}</span>
+              <span style="color: var(--warn-ink)"><i aria-hidden="true" class="ph ph-warning"></i> Can't merge automatically: {{ c.conflicts.join(', ') }}</span>
             }
           }
         }
       </section>
 
       @if (m.branches.length < 2) {
-        <div class="card empty"><i class="ph ph-git-branch"></i>Push a second branch to open a pull request.</div>
+        <div class="card empty"><i aria-hidden="true" class="ph ph-git-branch"></i>Push a second branch to open a pull request.</div>
       } @else if (base() === head()) {
         <div class="card empty">Choose two different branches.</div>
       } @else if (cmp.error(); as e) {
@@ -65,7 +65,7 @@ import { RepoContext } from './context';
             There's already an open pull request for these branches: <a class="link" [routerLink]="ctx.link('pull', '' + c.existing_pull)">#{{ c.existing_pull }}</a>
           </div>
         } @else if (!c.commits.length) {
-          <div class="card empty"><i class="ph ph-check-circle"></i>{{ base() }} already has everything in {{ head() }}. There isn't anything to compare.</div>
+          <div class="card empty"><i aria-hidden="true" class="ph ph-check-circle"></i>{{ base() }} already has everything in {{ head() }}. There isn't anything to compare.</div>
         } @else if (m.signed_in) {
           <form class="stack" (ngSubmit)="create()">
             @if (error()) {
@@ -75,14 +75,14 @@ import { RepoContext } from './context';
             <cy-editor [(text)]="body" label="Description" placeholder="What does this change, and why? Markdown works." />
             <div class="cluster">
               <span class="spacer"></span>
-              <button class="btn btn-grad" type="submit" [disabled]="busy() || !title().trim()"><i class="ph ph-git-pull-request"></i>Create pull request</button>
+              <button class="btn btn-grad" type="submit" [disabled]="busy() || !title().trim()"><i aria-hidden="true" class="ph ph-git-pull-request"></i>Create pull request</button>
             </div>
           </form>
         } @else {
           <div class="notice"><a class="link" routerLink="/login" [queryParams]="{ next: here }">Sign in</a> to open a pull request.</div>
         }
         @if (c.commits.length) {
-          <h2 class="label"><i class="ph ph-git-commit"></i> {{ plural(c.commits.length, 'commit') }}</h2>
+          <h3 class="label"><i aria-hidden="true" class="ph ph-git-commit"></i> {{ plural(c.commits.length, 'commit') }}</h3>
           <div class="card rows">
             @for (k of c.commits; track k.sha) {
               <div class="row hover" style="padding: 10px 16px">

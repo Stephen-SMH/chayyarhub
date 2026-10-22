@@ -3,7 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Api, errorText } from '../core/api';
+import { Announcer } from '../core/announcer';
 import { RepoContext } from './context';
 
 /** The header every repository page shares: name, visibility, star, tabs. */
@@ -17,14 +19,14 @@ import { RepoContext } from './context';
       <div class="page">
         <div class="cluster" style="justify-content: space-between">
           <h1 class="repo-title">
-            <i class="ph ph-book-bookmark faint"></i>
+            <i aria-hidden="true" class="ph ph-book-bookmark faint"></i>
             <a class="plain" [routerLink]="['/', ctx.owner()]">{{ ctx.owner() }}</a>
             <span class="faint">/</span>
             <a class="plain" [routerLink]="ctx.base()"><strong>{{ ctx.name() }}</strong></a>
             @if (ctx.info(); as m) {
               <span class="pill">
                 @if (m.repo.private) {
-                  <i class="ph ph-lock-simple"></i>Private
+                  <i aria-hidden="true" class="ph ph-lock-simple"></i>Private
                 } @else {
                   Public
                 }
@@ -33,7 +35,7 @@ import { RepoContext } from './context';
           </h1>
           @if (ctx.info(); as m) {
             <button type="button" class="btn" (click)="toggleStar()" [attr.aria-pressed]="m.starred">
-              <i [class]="m.starred ? 'ph-fill ph-star' : 'ph ph-star'" [style.color]="m.starred ? 'var(--warning)' : null"></i>
+              <i aria-hidden="true" [class]="m.starred ? 'ph-fill ph-star' : 'ph ph-star'" [style.color]="m.starred ? 'var(--warning)' : null"></i>
               {{ m.starred ? 'Starred' : 'Star' }}
               <span class="count">{{ m.repo.stars }}</span>
             </button>
@@ -43,21 +45,21 @@ import { RepoContext } from './context';
           <p class="soft" style="margin: 8px 0 0">{{ description }}</p>
         }
         <nav class="tabs" aria-label="Repository">
-          <a class="tab" [class.active]="section() === 'code'" [routerLink]="ctx.base()"><i class="ph ph-code"></i>Code</a>
-          <a class="tab" [class.active]="section() === 'issues'" [routerLink]="ctx.link('issues')">
-            <i class="ph ph-record"></i>Issues
+          <a class="tab" [class.active]="section() === 'code'" [attr.aria-current]="section() === 'code' ? 'page' : null" [routerLink]="ctx.base()"><i aria-hidden="true" class="ph ph-code"></i>Code</a>
+          <a class="tab" [class.active]="section() === 'issues'" [attr.aria-current]="section() === 'issues' ? 'page' : null" [routerLink]="ctx.link('issues')">
+            <i aria-hidden="true" class="ph ph-record"></i>Issues
             @if (ctx.info(); as m) {
               <span class="count">{{ m.open_issues }}</span>
             }
           </a>
-          <a class="tab" [class.active]="section() === 'pulls'" [routerLink]="ctx.link('pulls')">
-            <i class="ph ph-git-pull-request"></i>Pull requests
+          <a class="tab" [class.active]="section() === 'pulls'" [attr.aria-current]="section() === 'pulls' ? 'page' : null" [routerLink]="ctx.link('pulls')">
+            <i aria-hidden="true" class="ph ph-git-pull-request"></i>Pull requests
             @if (ctx.info(); as m) {
               <span class="count">{{ m.open_pulls }}</span>
             }
           </a>
           @if (ctx.info()?.is_owner) {
-            <a class="tab" [class.active]="section() === 'settings'" [routerLink]="ctx.link('settings')"><i class="ph ph-gear"></i>Settings</a>
+            <a class="tab" [class.active]="section() === 'settings'" [attr.aria-current]="section() === 'settings' ? 'page' : null" [routerLink]="ctx.link('settings')"><i aria-hidden="true" class="ph ph-gear"></i>Settings</a>
           }
         </nav>
       </div>
@@ -65,7 +67,12 @@ import { RepoContext } from './context';
     @if (ctx.info()) {
       <router-outlet />
     } @else if (ctx.meta.error(); as e) {
-      <div class="page empty"><i class="ph ph-footprints"></i>{{ errorText(e) }}</div>
+      <div class="page empty">
+        <i aria-hidden="true" class="ph ph-footprints"></i>{{ errorText(e) }}
+        @if (!isNotFound(e)) {
+          <div style="margin-top: 16px"><button type="button" class="btn" (click)="ctx.meta.reload()"><i aria-hidden="true" class="ph ph-arrow-clockwise"></i>Try again</button></div>
+        }
+      </div>
     } @else {
       <div class="loading">Loading…</div>
     }
@@ -74,6 +81,7 @@ import { RepoContext } from './context';
 export class RepoShell {
   protected readonly ctx = inject(RepoContext);
   private readonly api = inject(Api);
+  private readonly announcer = inject(Announcer);
   private readonly router = inject(Router);
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -90,6 +98,7 @@ export class RepoShell {
     return first === 'settings' ? 'settings' : 'code';
   });
   protected readonly errorText = errorText;
+  protected readonly isNotFound = (e: unknown) => e instanceof HttpErrorResponse && e.status === 404;
 
   constructor() {
     const title = inject(Title);
@@ -105,5 +114,6 @@ export class RepoShell {
     }
     await (m.starred ? this.api.delete(this.ctx.api('/star')) : this.api.put(this.ctx.api('/star')));
     this.ctx.meta.reload();
+    this.announcer.announce(`${m.starred ? 'Removed your star from' : 'Starred'} ${m.repo.owner}/${m.repo.name}`);
   }
 }

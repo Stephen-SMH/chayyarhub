@@ -11,7 +11,7 @@ import { RepoContext } from './context';
   template: `
     @let m = ctx.info()!;
     <div class="page narrow stack" style="gap: 24px">
-      <h1 style="font-size: 22px">Settings</h1>
+      <h2 style="font-size: 22px">Settings</h2>
       @if (!m.is_owner) {
         <div class="card empty">Only the owner can change this repository's settings.</div>
       } @else {
@@ -22,7 +22,7 @@ import { RepoContext } from './context';
           <div class="notice" role="status">{{ saved() }}</div>
         }
         <section class="card card-body stack">
-          <h2 class="label">General</h2>
+          <h3 class="label">General</h3>
           <label class="field">
             <span>Description</span>
             <input class="input" name="description" [(ngModel)]="description" maxlength="350" />
@@ -30,19 +30,19 @@ import { RepoContext } from './context';
           <div><button type="button" class="btn btn-grad" [disabled]="busy()" (click)="save({ description: description() }, 'Description saved.')">Save</button></div>
         </section>
         <section class="card card-body stack">
-          <h2 class="label">Visibility</h2>
+          <h3 class="label">Visibility</h3>
           <p style="margin: 0">
             This repository is <strong>{{ m.repo.private ? 'private' : 'public' }}</strong>.
             {{ m.repo.private ? 'Only you can see it.' : 'Anyone can see and clone it.' }}
           </p>
           <div>
             <button type="button" class="btn" [disabled]="busy()" (click)="save({ private: !m.repo.private }, 'Visibility changed.')">
-              <i [class]="m.repo.private ? 'ph ph-globe-simple' : 'ph ph-lock-simple'"></i>Make {{ m.repo.private ? 'public' : 'private' }}
+              <i aria-hidden="true" [class]="m.repo.private ? 'ph ph-globe-simple' : 'ph ph-lock-simple'"></i>Make {{ m.repo.private ? 'public' : 'private' }}
             </button>
           </div>
         </section>
         <section class="card card-body stack" style="border-color: color-mix(in srgb, var(--destructive) 45%, transparent)">
-          <h2 class="label" style="color: var(--bad)">Danger zone</h2>
+          <h3 class="label" style="color: var(--bad)">Danger zone</h3>
           <p style="margin: 0">Deleting removes the repository, its history, issues and pull requests for good.</p>
           <label class="field">
             <span>To confirm, type <span class="mono">{{ m.repo.owner }}/{{ m.repo.name }}</span></span>
@@ -50,7 +50,7 @@ import { RepoContext } from './context';
           </label>
           <div>
             <button type="button" class="btn btn-danger" [disabled]="busy() || confirm() !== m.repo.owner + '/' + m.repo.name" (click)="remove()">
-              <i class="ph ph-trash"></i>Delete this repository
+              <i aria-hidden="true" class="ph ph-trash"></i>Delete this repository
             </button>
           </div>
         </section>

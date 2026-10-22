@@ -5,6 +5,7 @@ import { apiUrl, errorText } from '../core/api';
 import { ago, copyText, day, plural, size, splitRefPath } from '../core/format';
 import type { Contents, Entry } from '../core/models';
 import { Avatar, MarkdownView } from '../shared/ui';
+import { Announcer } from '../core/announcer';
 import { RepoContext } from './context';
 
 /** The file browser: folders, files and READMEs, at any branch, tag or commit. */
@@ -21,8 +22,8 @@ import { RepoContext } from './context';
           <div class="card-body stack">
             <div class="copy-row" style="margin: 0">
               <input class="input" readonly [value]="m.clone_url" aria-label="Clone URL" />
-              <button type="button" class="btn icon-btn" (click)="copy(m.clone_url)" [title]="copied() ? 'Copied' : 'Copy URL'" aria-label="Copy clone URL">
-                <i class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
+              <button type="button" class="btn icon-btn" (click)="copy(m.clone_url, 'Clone URL copied')" [title]="copied() ? 'Copied' : 'Copy URL'" aria-label="Copy clone URL">
+                <i aria-hidden="true" class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
               </button>
             </div>
             @if (m.is_owner) {
@@ -55,12 +56,12 @@ git push -u origin main</pre>
         <div class="stack" style="min-width: 0">
           <div class="cluster">
             <details class="dropdown">
-              <summary class="btn" title="Switch branch"><i class="ph ph-git-branch"></i><span class="mono" style="font-size: 13.5px">{{ shortRef(a.ref) }}</span><i class="ph ph-caret-down"></i></summary>
+              <summary class="btn" title="Switch branch"><i aria-hidden="true" class="ph ph-git-branch"></i><span class="mono" style="font-size: 13.5px">{{ shortRef(a.ref) }}</span><i aria-hidden="true" class="ph ph-caret-down"></i></summary>
               <div class="menu">
                 <div class="menu-title label">Switch branch</div>
                 @for (b of m.branches; track b) {
                   <a [routerLink]="ctx.link(file() ? 'blob' : 'tree', b, a.path)" [class.sel]="b === a.ref">
-                    <i class="ph" [class.ph-check]="b === a.ref"></i><span class="mono">{{ b }}</span>
+                    <i aria-hidden="true" class="ph" [class.ph-check]="b === a.ref"></i><span class="mono">{{ b }}</span>
                     @if (b === m.default_branch) {
                       <span class="pill" style="margin-left: auto">default</span>
                     }
@@ -83,16 +84,16 @@ git push -u origin main</pre>
             }
             <span class="spacer"></span>
             @if (isRoot()) {
-              <a class="btn hide-sm" [routerLink]="ctx.link('branches')"><i class="ph ph-git-branch"></i>{{ m.branches.length }} {{ m.branches.length === 1 ? 'branch' : 'branches' }}</a>
+              <a class="btn hide-sm" [routerLink]="ctx.link('branches')"><i aria-hidden="true" class="ph ph-git-branch"></i>{{ m.branches.length }} {{ m.branches.length === 1 ? 'branch' : 'branches' }}</a>
             }
             <details class="dropdown">
-              <summary class="btn btn-grad"><i class="ph ph-code"></i>Code<i class="ph ph-caret-down"></i></summary>
+              <summary class="btn btn-grad"><i aria-hidden="true" class="ph ph-code"></i>Code<i aria-hidden="true" class="ph ph-caret-down"></i></summary>
               <div class="menu right clone">
                 <div class="label">Clone with HTTP</div>
                 <div class="copy-row">
                   <input class="input" readonly [value]="m.clone_url" aria-label="Clone URL" />
-                  <button type="button" class="btn icon-btn" (click)="copy(m.clone_url)" [title]="copied() ? 'Copied' : 'Copy URL'" aria-label="Copy clone URL">
-                    <i class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
+                  <button type="button" class="btn icon-btn" (click)="copy(m.clone_url, 'Clone URL copied')" [title]="copied() ? 'Copied' : 'Copy URL'" aria-label="Copy clone URL">
+                    <i aria-hidden="true" class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
                   </button>
                 </div>
                 <pre class="cmd">git clone {{ m.clone_url }}</pre>
@@ -102,7 +103,7 @@ git push -u origin main</pre>
           </div>
 
           @if (contents.error(); as e) {
-            <div class="card empty"><i class="ph ph-footprints"></i>{{ errorText(e) }}</div>
+            <div class="card empty"><i aria-hidden="true" class="ph ph-footprints"></i>{{ errorText(e) }}</div>
           } @else if (dir(); as d) {
             <section class="card">
               @if (d.last_commit; as c) {
@@ -112,22 +113,22 @@ git push -u origin main</pre>
                   <a class="msg plain soft" [routerLink]="ctx.link('commit', c.sha)" [title]="c.summary">{{ c.summary }}</a>
                   <a class="sha plain hide-sm" [routerLink]="ctx.link('commit', c.sha)">{{ c.short }}</a>
                   <span class="faint hide-sm">{{ ago(c.date) }}</span>
-                  <a class="btn" style="min-height: 36px; padding: 0 12px" [routerLink]="ctx.link('commits', d.ref)" [queryParams]="d.path ? { path: d.path } : {}">
-                    <i class="ph ph-clock-counter-clockwise"></i><span class="hide-sm">History</span>
+                  <a class="btn" style="min-height: 36px; padding: 0 12px" [routerLink]="ctx.link('commits', d.ref)" [queryParams]="d.path ? { path: d.path } : {}" aria-label="Commit history">
+                    <i aria-hidden="true" class="ph ph-clock-counter-clockwise"></i><span class="hide-sm">History</span>
                   </a>
                 </div>
               }
               <div class="rows">
                 @if (d.path) {
-                  <a class="row entry" [routerLink]="ctx.link('tree', d.ref, parent(d.path))" aria-label="Up one folder"><i class="ph ph-folder-simple dir"></i>..</a>
+                  <a class="row entry" [routerLink]="ctx.link('tree', d.ref, parent(d.path))" aria-label="Up one folder"><i aria-hidden="true" class="ph ph-folder-simple dir"></i>..</a>
                 }
                 @for (e of d.entries; track e.path) {
                   @if (e.kind === 'submodule') {
-                    <div class="row entry"><i class="ph ph-folder-simple-dashed"></i><span class="grow">{{ e.name }}</span><span class="faint">submodule</span></div>
+                    <div class="row entry"><i aria-hidden="true" class="ph ph-folder-simple-dashed"></i><span class="grow">{{ e.name }}</span><span class="faint">submodule</span></div>
                   } @else {
                     <a class="row entry" [routerLink]="ctx.link(e.kind === 'dir' ? 'tree' : 'blob', d.ref, e.path)">
-                      <i [class]="icon(e)"></i>
-                      <span class="grow">{{ e.name }}</span>
+                      <i aria-hidden="true" [class]="icon(e)"></i>
+                      <span class="grow"><span class="sr-only">{{ e.kind === 'dir' ? 'Folder' : 'File' }}: </span>{{ e.name }}</span>
                       @if (e.kind === 'file') {
                         <span class="faint mono hide-sm" style="font-size: 12.5px">{{ size(e.size) }}</span>
                       }
@@ -138,7 +139,7 @@ git push -u origin main</pre>
             </section>
             @if (d.readme; as r) {
               <section class="card">
-                <div class="card-head"><i class="ph ph-book-open"></i><strong>{{ r.name }}</strong></div>
+                <div class="card-head"><i aria-hidden="true" class="ph ph-book-open"></i><strong>{{ r.name }}</strong></div>
                 <div class="card-body" style="padding: 24px clamp(18px, 3vw, 36px)"><cy-markdown [html]="r.html" /></div>
               </section>
             }
@@ -153,15 +154,15 @@ git push -u origin main</pre>
                 </span>
                 <span class="spacer"></span>
                 @if (f.html !== null) {
-                  <div class="cluster" style="gap: 4px">
-                    <button type="button" class="btn" style="min-height: 36px" [class.btn-grad]="!showSource()" (click)="showSource.set(false)">Preview</button>
-                    <button type="button" class="btn" style="min-height: 36px" [class.btn-grad]="showSource()" (click)="showSource.set(true)">Code</button>
+                  <div class="segmented" role="group" aria-label="Show this file as">
+                    <button type="button" [attr.aria-pressed]="!showSource()" (click)="showSource.set(false)">Preview</button>
+                    <button type="button" [attr.aria-pressed]="showSource()" (click)="showSource.set(true)">Code</button>
                   </div>
                 }
                 <a class="btn" style="min-height: 36px" [href]="ctx.rawUrl(f.ref, f.path)" target="_blank" rel="noopener">Raw</a>
                 @if (f.text !== null) {
-                  <button type="button" class="btn icon-btn" style="min-height: 36px; width: 36px" (click)="copy(f.text)" title="Copy file contents" aria-label="Copy file contents">
-                    <i class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
+                  <button type="button" class="btn icon-btn" style="min-height: 36px; width: 36px" (click)="copy(f.text, 'File contents copied')" title="Copy file contents" aria-label="Copy file contents">
+                    <i aria-hidden="true" class="ph" [class.ph-copy]="!copied()" [class.ph-check]="copied()"></i>
                   </button>
                 }
               </div>
@@ -198,10 +199,10 @@ git push -u origin main</pre>
             <h2 class="label">About</h2>
             <p style="margin: 0">{{ m.repo.description || 'No description yet.' }}</p>
             <div class="meta" style="flex-direction: column; align-items: start; gap: 10px; margin: 0">
-              <span><i class="ph ph-star"></i> {{ plural(m.repo.stars, 'star') }}</span>
-              <a class="plain" [routerLink]="ctx.link('branches')"><i class="ph ph-git-branch"></i> {{ m.branches.length }} {{ m.branches.length === 1 ? 'branch' : 'branches' }}</a>
-              <a class="plain" [routerLink]="ctx.link('commits', a.ref)"><i class="ph ph-clock-counter-clockwise"></i> Commit history</a>
-              <span><i class="ph ph-footprints"></i> Created {{ day(m.repo.created_at) }}</span>
+              <span><i aria-hidden="true" class="ph ph-star"></i> {{ plural(m.repo.stars, 'star') }}</span>
+              <a class="plain" [routerLink]="ctx.link('branches')"><i aria-hidden="true" class="ph ph-git-branch"></i> {{ m.branches.length }} {{ m.branches.length === 1 ? 'branch' : 'branches' }}</a>
+              <a class="plain" [routerLink]="ctx.link('commits', a.ref)"><i aria-hidden="true" class="ph ph-clock-counter-clockwise"></i> Commit history</a>
+              <span><i aria-hidden="true" class="ph ph-footprints"></i> Created {{ day(m.repo.created_at) }}</span>
             </div>
           </aside>
         }
@@ -213,6 +214,7 @@ export class CodePage {
   /** `<ref>/<path>` from a /tree/… or /blob/… URL; empty on the repository's front page. */
   readonly rest = input<string>();
   protected readonly ctx = inject(RepoContext);
+  private readonly announcer = inject(Announcer);
 
   protected readonly at = computed(() => {
     const m = this.ctx.info();
@@ -266,9 +268,10 @@ export class CodePage {
     return /^[0-9a-f]{40}$/.test(ref) ? ref.slice(0, 7) : ref;
   }
 
-  protected async copy(text: string) {
+  protected async copy(text: string, done: string) {
     await copyText(text);
     this.copied.set(true);
+    this.announcer.announce(done);
     setTimeout(() => this.copied.set(false), 1500);
   }
 }

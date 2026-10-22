@@ -3,7 +3,11 @@
 @import '@phosphor-icons/web/regular';
 @import '@phosphor-icons/web/fill';
 
-/* Soe design system tokens. Dark is the default; <html data-theme="light"> switches. */
+/*
+ * Soe design system tokens, without its purple: the accent is rose, gradients
+ * run rose to ember, and "done" states are blue. Components use these tokens,
+ * never raw hues. Dark is the default; <html data-theme="light"> switches.
+ */
 :root {
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   color-scheme: dark;
@@ -22,23 +26,30 @@
   --warning-soft: rgba(244, 168, 37, 0.14);
   --destructive: #d34545;
   --destructive-soft: rgba(211, 69, 69, 0.16);
-  --accent: hsl(318 80% 66%);
-  --accent-soft: hsl(318 80% 66% / 0.16);
-  --accent-soft-ink: hsl(320 90% 85%);
-  --violet: #a78bfa;
+  --accent: hsl(345 85% 68%);
+  --accent-soft: hsl(345 85% 68% / 0.16);
+  --accent-soft-ink: hsl(348 95% 85%);
+  /* accent at partial strength, for rings, borders and underlines */
+  --accent-line: hsl(345 85% 66% / 0.5);
+  --folder: #6cb6ff;
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
-  --grad: linear-gradient(90deg, hsl(326 85% 62%), hsl(250 80% 62%));
+  /* white text stays above 4.5:1 along the whole gradient */
+  --grad: linear-gradient(90deg, hsl(345 78% 47%), hsl(8 80% 46%));
+  --grad-tint: linear-gradient(90deg, hsl(345 85% 62% / 0.14), hsl(12 90% 60% / 0.14));
+  --glow: hsl(350 85% 55% / 0.8);
   /* text-safe status colours (>= 4.5:1 on the page) */
   --ok: #39c684;
-  --done: #b8a1ff;
+  --done: #6cb6ff;
   --bad: #f0a0a0;
   --warn-ink: #f8c170;
   --add-bg: rgba(57, 198, 132, 0.11);
   --add-ln: rgba(57, 198, 132, 0.2);
   --del-bg: rgba(211, 69, 69, 0.12);
   --del-ln: rgba(211, 69, 69, 0.22);
-  --hunk-bg: rgba(167, 139, 250, 0.09);
+  --hunk-bg: rgba(84, 174, 255, 0.1);
+  --done-soft: rgba(108, 182, 255, 0.14);
+  --row-hover: rgba(108, 182, 255, 0.06);
 }
 
 :root[data-theme='light'] {
@@ -52,19 +63,22 @@
   --rule: rgba(15, 30, 40, 0.09);
   --rule-strong: rgba(15, 30, 40, 0.15);
   --glass: rgba(255, 255, 255, 0.78);
-  --accent: hsl(312 62% 42%);
-  --accent-soft: hsl(312 62% 42% / 0.1);
-  --accent-soft-ink: hsl(312 66% 27%);
-  --grad: linear-gradient(90deg, hsl(326 80% 52%), hsl(250 72% 56%));
-  --ok: #17803d;
-  --done: #6d3fd8;
+  --accent: hsl(345 75% 40%);
+  --accent-soft: hsl(345 75% 40% / 0.1);
+  --accent-soft-ink: hsl(345 75% 27%);
+  --accent-line: hsl(345 75% 40% / 0.45);
+  --folder: #2f74d0;
+  --ok: #116b32;
+  --done: #0a5bb5;
   --bad: #b42318;
   --warn-ink: #8a5a00;
   --add-bg: #e3f8e8;
   --add-ln: #bdecc9;
   --del-bg: #ffecea;
   --del-ln: #ffd2ce;
-  --hunk-bg: hsl(262 80% 62% / 0.08);
+  --hunk-bg: hsl(212 90% 55% / 0.08);
+  --done-soft: rgba(10, 91, 181, 0.1);
+  --row-hover: rgba(10, 91, 181, 0.05);
 }
 
 * {
@@ -73,6 +87,10 @@
 html,
 body {
   margin: 0;
+}
+html {
+  /* keep a focused control clear of the sticky header */
+  scroll-padding-top: 88px;
 }
 body {
   background: var(--paper);
@@ -96,10 +114,16 @@ a {
   color: inherit;
   text-decoration: none;
 }
+/* Links in running text are underlined: colour alone doesn't set them apart for everyone. */
 a.link {
   color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  text-underline-offset: 3px;
 }
-a.link:hover,
+a.link:hover {
+  text-decoration-color: currentColor;
+}
 a.plain:hover {
   text-decoration: underline;
 }
@@ -109,6 +133,32 @@ textarea,
 select {
   font: inherit;
   color: inherit;
+}
+a,
+button,
+summary,
+label,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+main:focus {
+  outline: none;
+}
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 100;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  color: #fff;
+  background: var(--grad);
+  font-weight: 500;
+}
+.skip-link:focus {
+  top: 12px;
 }
 code,
 .mono {
@@ -159,11 +209,15 @@ code,
   align-items: center;
   gap: 10px;
 }
+/* Two columns that stack on small screens. Pages pick the columns with --cols. */
 .split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: var(--cols, minmax(0, 1fr) 300px);
   gap: 28px;
   align-items: start;
+}
+.split-aside {
+  --cols: 300px minmax(0, 1fr);
 }
 .spacer {
   flex: 1;
@@ -172,6 +226,60 @@ code,
   .split {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+.field .field-error,
+.field-error {
+  color: var(--bad);
+  font-size: 13px;
+}
+/* A two- or three-way switch (Preview / Code); the chosen side reads as selected, not as a call to action. */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 9999px;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+}
+.segmented button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9999px;
+  background: none;
+  color: var(--ink-soft);
+  font-weight: 500;
+  cursor: pointer;
+}
+.segmented button[aria-pressed='true'] {
+  color: var(--accent-soft-ink);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+.input[aria-invalid='true'] {
+  border-color: color-mix(in srgb, var(--destructive) 70%, transparent);
+}
+.with-button {
+  position: relative;
+}
+.with-button .input {
+  padding-right: 56px;
+}
+.with-button .inside {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 48px;
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 19px;
+  cursor: pointer;
+}
+.with-button .inside:hover {
+  color: var(--ink);
 }
 @media (max-width: 640px) {
   .page {
@@ -215,8 +323,8 @@ code,
   place-items: center;
   color: #fff;
   font-size: 20px;
-  background: linear-gradient(135deg, hsl(326 85% 62%), hsl(262 80% 62%) 60%, #6366f1);
-  box-shadow: 0 8px 22px -10px hsl(318 85% 60% / 0.8);
+  background: linear-gradient(135deg, hsl(345 80% 55%), hsl(8 82% 50%));
+  box-shadow: 0 8px 22px -10px var(--glow);
 }
 .brand small {
   font-family: var(--font-mono);
@@ -237,15 +345,15 @@ code,
 .nav-link:hover,
 .nav-link.active {
   color: var(--ink);
-  background: linear-gradient(90deg, hsl(326 85% 62% / 0.14), hsl(262 80% 62% / 0.14));
-  box-shadow: inset 0 0 0 1px hsl(318 80% 66% / 0.25);
+  background: var(--grad-tint);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 .site-footer {
   margin-top: 40px;
 }
 .hairline {
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(318 80% 66% / 0.55), hsl(262 80% 62% / 0.55), transparent);
+  background: linear-gradient(90deg, transparent, hsl(345 85% 62% / 0.55), hsl(12 90% 58% / 0.55), transparent);
 }
 .site-footer .inner {
   padding: 20px 24px 28px;
@@ -300,7 +408,7 @@ code,
   color: #fff;
   border-color: transparent;
   background: var(--grad);
-  box-shadow: 0 14px 30px -16px hsl(318 85% 60% / 0.8);
+  box-shadow: 0 14px 30px -16px var(--glow);
 }
 .btn-grad:hover:not(:disabled) {
   filter: brightness(1.08);
@@ -341,7 +449,7 @@ code,
 }
 .pill-done {
   color: var(--done);
-  background: hsl(262 80% 66% / 0.14);
+  background: var(--done-soft);
   border-color: transparent;
 }
 .pill-closed {
@@ -453,7 +561,8 @@ a.row:hover,
   flex-direction: column;
   gap: 6px;
 }
-.field > span {
+.field > span,
+.field > label {
   font-weight: 500;
   font-size: 14px;
 }
@@ -488,7 +597,7 @@ textarea.input {
   cursor: pointer;
 }
 .choice:has(input:checked) {
-  border-color: hsl(318 80% 66% / 0.55);
+  border-color: var(--accent-line);
   background: var(--accent-soft);
 }
 .choice i {
@@ -557,7 +666,7 @@ textarea.input {
 
 /* ---- avatars ---- */
 .avatar {
-  --h: 318;
+  --h: 345;
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -568,7 +677,7 @@ textarea.input {
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
-  background: linear-gradient(150deg, hsl(var(--h) 75% 62%), hsl(calc(var(--h) - 56) 70% 52%));
+  background: linear-gradient(150deg, hsl(var(--h) 72% 56%), hsl(calc(var(--h) + 24) 72% 46%));
 }
 
 /* ---- repository ---- */
@@ -650,7 +759,7 @@ textarea.input {
   color: var(--ink-faint);
 }
 .entry i.dir {
-  color: var(--violet);
+  color: var(--folder);
 }
 .commit-bar {
   display: flex;
@@ -724,7 +833,7 @@ textarea.input {
   padding: 0 20px 0 8px;
 }
 .code tr:hover td {
-  background: hsl(262 80% 66% / 0.06);
+  background: var(--row-hover);
 }
 .code table tr:first-child td {
   padding-top: 8px;
@@ -805,21 +914,42 @@ textarea.input {
 .prose > :last-child {
   margin-bottom: 0;
 }
-.prose h1,
-.prose h2 {
+/* The server shifts Markdown headings down one level (# is h2), so size them as the author wrote them. */
+.prose h2,
+.prose h3 {
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--rule);
   margin: 1.2em 0 0.6em;
 }
-.prose h3,
-.prose h4 {
+.prose h2 {
+  font-size: 1.9em;
+}
+.prose h3 {
+  font-size: 1.45em;
+}
+.prose h4,
+.prose h5,
+.prose h6 {
   margin: 1.2em 0 0.5em;
+}
+.prose h4 {
+  font-size: 1.2em;
+}
+.prose h5 {
+  font-size: 1.05em;
+}
+.prose h6 {
+  font-size: 0.95em;
+  color: var(--ink-soft);
 }
 .prose a {
   color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  text-underline-offset: 3px;
 }
 .prose a:hover {
-  text-decoration: underline;
+  text-decoration-color: currentColor;
 }
 .prose code {
   font-size: 0.88em;
@@ -841,7 +971,7 @@ textarea.input {
   margin: 0;
   padding: 0 1em;
   color: var(--ink-soft);
-  border-left: 3px solid hsl(318 80% 66% / 0.5);
+  border-left: 3px solid var(--accent-line);
 }
 .prose table {
   border-collapse: collapse;
@@ -909,7 +1039,7 @@ textarea.input {
   border-radius: 2rem;
   padding: clamp(1.5rem, 4vw, 3.5rem);
   color: #fff;
-  background: linear-gradient(180deg, #1a1a1c 0%, #1d2140 45%, #34408f 100%);
+  background: linear-gradient(180deg, #19191b 0%, #2a1b1f 45%, #4a1f28 100%);
   box-shadow: 0 40px 90px -45px rgba(60, 40, 180, 0.55);
 }
 .panel-dark::after {
@@ -919,8 +1049,8 @@ textarea.input {
   height: 50%;
   pointer-events: none;
   background:
-    radial-gradient(45% 90% at 12% 100%, rgba(170, 160, 255, 0.5), transparent 70%),
-    radial-gradient(40% 80% at 90% 100%, rgba(244, 114, 182, 0.34), transparent 70%);
+    radial-gradient(45% 90% at 12% 100%, rgba(251, 113, 133, 0.42), transparent 70%),
+    radial-gradient(40% 80% at 90% 100%, rgba(251, 146, 60, 0.32), transparent 70%);
 }
 .panel-dark > * {
   position: relative;
@@ -957,7 +1087,7 @@ textarea.input {
   backdrop-filter: blur(6px);
 }
 .chip .mono {
-  color: hsl(320 90% 85%);
+  color: hsl(348 95% 85%);
 }
 .btn-glass {
   color: #fff;
@@ -990,7 +1120,7 @@ textarea.input {
   background: rgba(255, 255, 255, 0.22);
 }
 .terminal .p {
-  color: #f472b6;
+  color: #fb7185;
 }
 .terminal .c {
   color: #7be0b2;
@@ -1003,7 +1133,7 @@ textarea.input {
   width: 8px;
   height: 16px;
   vertical-align: -3px;
-  background: #f472b6;
+  background: #fb7185;
   animation: blink 1.1s steps(1) infinite;
 }
 @keyframes blink {
@@ -1015,6 +1145,13 @@ textarea.input {
   .hero {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+/* a heading link stands on its own, so it needs no underline until hovered */
+.repo-card h3 .link {
+  text-decoration: none;
+}
+.repo-card h3 .link:hover {
+  text-decoration: underline;
 }
 .repo-card h3 {
   font-size: 16px;
@@ -1046,11 +1183,25 @@ textarea.input {
   }
 }
 
+/* Small screens get a smaller profile picture. */
+@media (max-width: 900px) {
+  .profile-avatar .avatar {
+    width: 96px !important;
+    height: 96px !important;
+    font-size: 44px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* without this, an infinite animation flickers at its new speed */
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .terminal .cursor {
+    animation: none;
   }
 }

@@ -14,27 +14,28 @@ import { RepoContext, issueIcon } from './context';
   template: `
     <div class="page stack">
       <div class="cluster">
-        <h1 style="font-size: 22px">{{ pulls() ? 'Pull requests' : 'Issues' }}</h1>
+        <h2 style="font-size: 22px">{{ pulls() ? 'Pull requests' : 'Issues' }}</h2>
         <span class="spacer"></span>
         @if (pulls()) {
-          <a class="btn btn-grad" [routerLink]="ctx.link('compare')"><i class="ph ph-git-pull-request"></i>New pull request</a>
+          <a class="btn btn-grad" [routerLink]="ctx.link('compare')"><i aria-hidden="true" class="ph ph-git-pull-request"></i>New pull request</a>
         } @else {
-          <a class="btn btn-grad" [routerLink]="ctx.link('issues', 'new')"><i class="ph ph-plus"></i>New issue</a>
+          <a class="btn btn-grad" [routerLink]="ctx.link('issues', 'new')"><i aria-hidden="true" class="ph ph-plus"></i>New issue</a>
         }
       </div>
       <section class="card">
         <div class="card-head" style="padding: 0 8px">
-          <a class="tab" [class.active]="!closed()" [routerLink]="[]" [queryParams]="{ state: null }">
-            <i [class]="pulls() ? 'ph ph-git-pull-request' : 'ph ph-record'"></i>{{ counts().open }} Open
+          <a class="tab" [class.active]="!closed()" [attr.aria-current]="!closed() ? 'page' : null" [routerLink]="[]" [queryParams]="{ state: null }">
+            <i aria-hidden="true" [class]="pulls() ? 'ph ph-git-pull-request' : 'ph ph-record'"></i>{{ counts().open }} Open
           </a>
-          <a class="tab" [class.active]="closed()" [routerLink]="[]" [queryParams]="{ state: 'closed' }"><i class="ph ph-check"></i>{{ counts().closed }} Closed</a>
+          <a class="tab" [class.active]="closed()" [attr.aria-current]="closed() ? 'page' : null" [routerLink]="[]" [queryParams]="{ state: 'closed' }"><i aria-hidden="true" class="ph ph-check"></i>{{ counts().closed }} Closed</a>
         </div>
         @if (data.hasValue()) {
           <div class="rows">
             @for (i of data.value().issues; track i.number) {
               <div class="row hover" style="padding: 10px 16px; align-items: start">
-                <i [class]="icon(i)" style="font-size: 20px; margin-top: 2px"></i>
+                <i aria-hidden="true" [class]="icon(i)" style="font-size: 20px; margin-top: 2px" [title]="stateName(i)"></i>
                 <div style="flex: 1; min-width: 0">
+                  <span class="sr-only">{{ stateName(i) }}: </span>
                   <a class="plain" style="font-weight: 550; overflow-wrap: anywhere" [routerLink]="ctx.link(i.is_pull ? 'pull' : 'issues', '' + i.number)">{{ i.title }}</a>
                   <div class="faint" style="font-size: 13px; margin-top: 2px">
                     #{{ i.number }} opened {{ ago(i.created_at) }} by {{ i.author }}
@@ -44,12 +45,12 @@ import { RepoContext, issueIcon } from './context';
                   </div>
                 </div>
                 @if (i.comments) {
-                  <span class="faint" style="font-size: 13px; white-space: nowrap"><i class="ph ph-chat-circle"></i> {{ i.comments }}</span>
+                  <span class="faint" style="font-size: 13px; white-space: nowrap"><i aria-hidden="true" class="ph ph-chat-circle"></i> {{ i.comments }}</span>
                 }
               </div>
             } @empty {
               <div class="empty">
-                <i [class]="pulls() ? 'ph ph-git-pull-request' : 'ph ph-record'"></i>
+                <i aria-hidden="true" [class]="pulls() ? 'ph ph-git-pull-request' : 'ph ph-record'"></i>
                 No {{ closed() ? 'closed' : 'open' }} {{ pulls() ? 'pull requests' : 'issues' }}.
               </div>
             }
@@ -73,6 +74,9 @@ export class IssuesPage {
   );
   protected readonly counts = computed(() => (this.data.hasValue() ? this.data.value() : { open: 0, closed: 0 }));
   protected readonly icon = issueIcon;
+  protected stateName(i: Issue): string {
+    return i.state === 'merged' ? 'Merged' : i.state === 'open' ? 'Open' : 'Closed';
+  }
   protected readonly ago = ago;
   protected readonly errorText = errorText;
 }

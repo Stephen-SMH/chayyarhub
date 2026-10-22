@@ -7,6 +7,7 @@ import { ago, plural } from '../core/format';
 import type { IssueDetail } from '../core/models';
 import { DiffView } from '../shared/diff';
 import { Avatar, MarkdownEditor, MarkdownView } from '../shared/ui';
+import { Announcer } from '../core/announcer';
 import { RepoContext, issueIcon, statePill } from './context';
 
 const EVENTS: Record<string, { icon: string; text: string }> = {
@@ -26,9 +27,9 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
         @let d = data.value();
         @let i = d.issue;
         <header class="stack" style="gap: 10px; padding-bottom: 16px; border-bottom: 1px solid var(--rule)">
-          <h1 style="font-size: 28px; font-weight: 500; overflow-wrap: anywhere">{{ i.title }} <span class="faint" style="font-weight: 300">#{{ i.number }}</span></h1>
+          <h2 style="font-size: 28px; font-weight: 500; overflow-wrap: anywhere">{{ i.title }} <span class="faint" style="font-weight: 300">#{{ i.number }}</span></h2>
           <div class="cluster" style="gap: 8px">
-            <span [class]="statePill(i)"><i [class]="stateIcon(i)" style="color: inherit"></i>{{ stateLabel() }}</span>
+            <span [class]="statePill(i)"><i aria-hidden="true" [class]="stateIcon(i)" style="color: inherit"></i>{{ stateLabel() }}</span>
             <span class="soft">
               <strong>{{ i.author }}</strong>
               @if (i.is_pull) {
@@ -42,21 +43,35 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
         </header>
 
         @if (i.is_pull) {
-          <nav class="tabs" style="margin-top: 0; border-bottom: 1px solid var(--rule)" aria-label="Pull request">
-            <button type="button" class="tab" [class.active]="tab() === 'talk'" (click)="tab.set('talk')"><i class="ph ph-chat-circle"></i>Conversation</button>
-            <button type="button" class="tab" [class.active]="tab() === 'commits'" (click)="tab.set('commits')">
-              <i class="ph ph-git-commit"></i>Commits <span class="count">{{ d.pull?.commits?.length ?? 0 }}</span>
-            </button>
-            <button type="button" class="tab" [class.active]="tab() === 'files'" (click)="tab.set('files')">
-              <i class="ph ph-file"></i>Files changed <span class="count">{{ d.pull?.files?.length ?? 0 }}</span>
-            </button>
-          </nav>
+          <div class="tabs" style="margin-top: 0; border-bottom: 1px solid var(--rule)" role="tablist" aria-label="Pull request" (keydown)="moveTab($event)">
+            @for (t of TABS; track t.id) {
+              <button
+                type="button"
+                class="tab"
+                role="tab"
+                [id]="'tab-' + t.id"
+                aria-controls="pull-panel"
+                [class.active]="tab() === t.id"
+                [attr.aria-selected]="tab() === t.id"
+                [tabIndex]="tab() === t.id ? 0 : -1"
+                (click)="tab.set(t.id)"
+              >
+                <i aria-hidden="true" [class]="'ph ' + t.icon"></i>{{ t.label }}
+                @if (t.id === 'commits') {
+                  <span class="count">{{ d.pull?.commits?.length ?? 0 }}</span>
+                } @else if (t.id === 'files') {
+                  <span class="count">{{ d.pull?.files?.length ?? 0 }}</span>
+                }
+              </button>
+            }
+          </div>
         }
 
         @if (error()) {
           <div class="alert" role="alert">{{ error() }}</div>
         }
 
+        <div id="pull-panel" [attr.role]="i.is_pull ? 'tabpanel' : null" [attr.aria-labelledby]="i.is_pull ? 'tab-' + tab() : null">
         @if (tab() === 'commits' && d.pull) {
           <div class="card rows">
             @for (c of d.pull.commits; track c.sha) {
@@ -98,7 +113,7 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
                 </div>
               } @else {
                 <div class="event">
-                  <span class="dot"><i [class]="event(c.kind).icon"></i></span>
+                  <span class="dot"><i aria-hidden="true" [class]="event(c.kind).icon"></i></span>
                   <cy-avatar [name]="c.author" [size]="20" /><strong>{{ c.author }}</strong> {{ event(c.kind).text }} {{ ago(c.created_at) }}
                 </div>
               }
@@ -108,16 +123,16 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
               <section class="card" style="margin-left: 52px">
                 <div class="card-body cluster" style="gap: 14px; align-items: start">
                   @if (i.state === 'merged') {
-                    <i class="ph ph-git-merge state-done" style="font-size: 28px"></i>
+                    <i aria-hidden="true" class="ph ph-git-merge state-done" style="font-size: 28px"></i>
                     <div style="flex: 1"><strong>Merged</strong><br /><span class="soft">{{ i.head }} was merged into {{ i.base }}.</span></div>
                   } @else if (i.state === 'closed') {
-                    <i class="ph ph-git-pull-request state-closed" style="font-size: 28px"></i>
+                    <i aria-hidden="true" class="ph ph-git-pull-request state-closed" style="font-size: 28px"></i>
                     <div style="flex: 1"><strong>Closed without merging</strong><br /><span class="soft">Reopen it to merge.</span></div>
                   } @else if (!d.pull.head_exists || !d.pull.base_exists) {
-                    <i class="ph ph-warning" style="font-size: 28px; color: var(--warn-ink)"></i>
+                    <i aria-hidden="true" class="ph ph-warning" style="font-size: 28px; color: var(--warn-ink)"></i>
                     <div style="flex: 1"><strong>A branch is missing</strong><br /><span class="soft">{{ d.pull.head_exists ? i.base : i.head }} no longer exists.</span></div>
                   } @else if (d.pull.mergeable === false) {
-                    <i class="ph ph-warning" style="font-size: 28px; color: var(--warn-ink)"></i>
+                    <i aria-hidden="true" class="ph ph-warning" style="font-size: 28px; color: var(--warn-ink)"></i>
                     <div style="flex: 1; min-width: 0">
                       <strong>This branch has conflicts that must be resolved</strong><br />
                       <span class="soft">Conflicting files: </span><span class="mono" style="font-size: 13px">{{ d.pull.conflicts.join(', ') }}</span>
@@ -128,16 +143,16 @@ git merge origin/{{ i.base }}
 git push</pre>
                     </div>
                   } @else if (!d.pull.commits.length) {
-                    <i class="ph ph-check-circle state-done" style="font-size: 28px"></i>
+                    <i aria-hidden="true" class="ph ph-check-circle state-done" style="font-size: 28px"></i>
                     <div style="flex: 1"><strong>Nothing left to merge</strong><br /><span class="soft">{{ i.base }} already has these commits.</span></div>
                   } @else {
-                    <i class="ph ph-check-circle state-open" style="font-size: 28px"></i>
+                    <i aria-hidden="true" class="ph ph-check-circle state-open" style="font-size: 28px"></i>
                     <div style="flex: 1; min-width: 200px">
                       <strong>No conflicts with the base branch</strong><br />
                       <span class="soft">{{ d.can_merge ? 'Merging creates a merge commit on ' + i.base + '.' : 'Only the repository owner can merge.' }}</span>
                     </div>
                     @if (d.can_merge) {
-                      <button type="button" class="btn btn-grad" [disabled]="busy()" (click)="merge()"><i class="ph ph-git-merge"></i>Merge pull request</button>
+                      <button type="button" class="btn btn-grad" [disabled]="busy()" (click)="merge()"><i aria-hidden="true" class="ph ph-git-merge"></i>Merge pull request</button>
                     }
                   }
                 </div>
@@ -153,7 +168,7 @@ git push</pre>
                     <span class="spacer"></span>
                     @if (d.can_close && i.state !== 'merged') {
                       <button type="button" class="btn" [disabled]="busy()" (click)="setState(i.state === 'open' ? 'closed' : 'open')">
-                        <i [class]="i.state === 'open' ? 'ph ph-check-circle state-done' : 'ph ph-record state-open'"></i>
+                        <i aria-hidden="true" [class]="i.state === 'open' ? 'ph ph-check-circle state-done' : 'ph ph-record state-open'"></i>
                         {{ i.state === 'open' ? 'Close' : 'Reopen' }} {{ i.is_pull ? 'pull request' : 'issue' }}
                       </button>
                     }
@@ -168,8 +183,9 @@ git push</pre>
             }
           </div>
         }
+        </div>
       } @else if (data.error(); as e) {
-        <div class="card empty"><i class="ph ph-footprints"></i>{{ errorText(e) }}</div>
+        <div class="card empty"><i aria-hidden="true" class="ph ph-footprints"></i>{{ errorText(e) }}</div>
       } @else {
         <div class="loading">Loading…</div>
       }
@@ -195,6 +211,7 @@ export class IssuePage {
   protected readonly plural = plural;
   protected readonly errorText = errorText;
   private readonly api = inject(Api);
+  private readonly announcer = inject(Announcer);
 
   constructor() {
     const title = inject(Title);
@@ -206,17 +223,36 @@ export class IssuePage {
     });
   }
 
+  protected readonly TABS = [
+    { id: 'talk', label: 'Conversation', icon: 'ph-chat-circle' },
+    { id: 'commits', label: 'Commits', icon: 'ph-git-commit' },
+    { id: 'files', label: 'Files changed', icon: 'ph-file' },
+  ] as const;
+
+  /** Arrow keys, Home and End move between tabs, as in any tab list. */
+  protected moveTab(e: KeyboardEvent) {
+    const ids = this.TABS.map((t) => t.id);
+    const at = ids.indexOf(this.tab());
+    const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: ids.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const id = ids[(next + ids.length) % ids.length];
+    this.tab.set(id);
+    setTimeout(() => document.getElementById(`tab-${id}`)?.focus());
+  }
+
   protected event(kind: string) {
     return EVENTS[kind] ?? { icon: 'ph ph-record', text: kind };
   }
 
-  private async act(job: () => Promise<unknown>) {
+  private async act(job: () => Promise<unknown>, done: string) {
     this.busy.set(true);
     this.error.set(null);
     try {
       await job();
       this.data.reload();
       this.ctx.meta.reload();
+      this.announcer.announce(done);
     } catch (e) {
       this.error.set(errorText(e));
     } finally {
@@ -228,14 +264,15 @@ export class IssuePage {
     return this.act(async () => {
       await this.api.post(this.ctx.api(`/issues/${this.number()}/comments`), { body: this.comment() });
       this.comment.set('');
-    });
+    }, 'Comment posted');
   }
 
   protected setState(state: 'open' | 'closed') {
-    return this.act(() => this.api.post(this.ctx.api(`/issues/${this.number()}/state`), { state }));
+    const what = this.data.hasValue() && this.data.value().issue.is_pull ? 'Pull request' : 'Issue';
+    return this.act(() => this.api.post(this.ctx.api(`/issues/${this.number()}/state`), { state }), `${what} ${state === 'open' ? 'reopened' : 'closed'}`);
   }
 
   protected merge() {
-    return this.act(() => this.api.post(this.ctx.api(`/pulls/${this.number()}/merge`)));
+    return this.act(() => this.api.post(this.ctx.api(`/pulls/${this.number()}/merge`)), 'Pull request merged');
   }
 }

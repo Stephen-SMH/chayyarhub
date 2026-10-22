@@ -39,6 +39,12 @@ The names of planned products are working names.
 | **An issue, with Burmese text** | **On a phone** |
 | ![An issue's conversation](docs/issue.png) | ![The repository page at phone width](docs/phone.png) |
 
+## Accessibility
+
+- **Keyboard:** a "Skip to content" link, a visible focus ring, focus moved to the new page's content after each navigation, Escape to close menus, and arrow keys in a pull request's tabs.
+- **Screen readers:** every control has a name, and states shown by icons (open, closed or merged; folder or file) are also written in text. Actions such as copying, starring, commenting and merging are announced. Form errors sit under their field and are linked to it.
+- **Checked** with axe-core on every page in light and dark mode (no violations), at 375 px wide (no sideways scrolling), and with reduced motion turned on.
+
 ## Run it
 
 You need Node 22.22.3 or newer and git 2.38 or newer.
@@ -107,7 +113,7 @@ server/   NestJS: controllers, SQLite (db.service.ts), git (git.ts, git-http.con
 web/      Angular: pages/ for site pages, repo/ for repository pages, shared/ for diff, Markdown and avatars
 ```
 
-The look follows Soe's design system: Geist type, a pink-to-violet accent, glass panels on dark, and a real light mode.
+The look follows Soe's design system: Geist type, a rose-to-ember accent with blue for merged work, glass panels on dark, and a real light mode.
 
 ## Roadmap
 

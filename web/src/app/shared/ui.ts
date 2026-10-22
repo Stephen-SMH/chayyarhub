@@ -8,8 +8,8 @@ import { Api } from '../core/api';
 import { ago } from '../core/format';
 import type { Repo } from '../core/models';
 
-/** The design system's per-card hues: pink, violet, indigo, magenta, blue. */
-const HUES = [318, 262, 236, 340, 222];
+/** Avatar hues: rose, ember, green, blue, sky (no purples; see styles.css). */
+const HUES = [345, 8, 150, 205, 190];
 
 /** A round initial in a gradient picked from the name, so each person keeps their colour. */
 @Component({
@@ -69,8 +69,8 @@ export class MarkdownView {
   template: `
     <div class="card">
       <div class="card-head" style="min-height: 0; padding: 0 8px">
-        <button type="button" class="tab" [class.active]="!preview()" (click)="preview.set(false)">Write</button>
-        <button type="button" class="tab" [class.active]="preview()" (click)="showPreview()">Preview</button>
+        <button type="button" class="tab" [class.active]="!preview()" [attr.aria-pressed]="!preview()" (click)="preview.set(false)">Write</button>
+        <button type="button" class="tab" [class.active]="preview()" [attr.aria-pressed]="preview()" (click)="showPreview()">Preview</button>
       </div>
       @if (preview()) {
         <div class="card-body" style="min-height: 150px">
@@ -124,14 +124,14 @@ export class MarkdownEditor {
           </a>
         </h3>
         @if (repo().private) {
-          <span class="pill"><i class="ph ph-lock-simple"></i>Private</span>
+          <span class="pill"><i aria-hidden="true" class="ph ph-lock-simple"></i>Private</span>
         }
       </div>
       @if (repo().description) {
         <p>{{ repo().description }}</p>
       }
       <div class="meta">
-        <span><i class="ph ph-star"></i> {{ repo().stars }}</span>
+        <span><i aria-hidden="true" class="ph ph-star"></i> {{ repo().stars }}</span>
         <span>Updated {{ ago(repo().pushed_at ?? repo().created_at) }}</span>
       </div>
     </div>

@@ -56,7 +56,7 @@ export function parseDiff(patch: string): Line[] {
               [attr.aria-expanded]="!folded().has(f.path)"
               [attr.aria-label]="(folded().has(f.path) ? 'Show ' : 'Hide ') + f.path"
             >
-              <i class="ph" [class.ph-caret-down]="!folded().has(f.path)" [class.ph-caret-right]="folded().has(f.path)"></i>
+              <i aria-hidden="true" class="ph" [class.ph-caret-down]="!folded().has(f.path)" [class.ph-caret-right]="folded().has(f.path)"></i>
             </button>
             <span class="kind">{{ f.kind }}</span>
             <span class="mono" style="font-size: 13.5px; overflow-wrap: anywhere; flex: 1; min-width: 0">

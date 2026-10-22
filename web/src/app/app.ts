@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs';
+import { Announcer } from './core/announcer';
 import { Session, Theme } from './core/session';
 import { Avatar } from './shared/ui';
 
@@ -7,15 +10,18 @@ import { Avatar } from './shared/ui';
   selector: 'cy-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, Avatar],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '(document:click)': 'closeMenus($event)' },
+  host: { '(document:click)': 'closeMenus($event)', '(document:keydown.escape)': 'closeOnEscape()' },
   template: `
+    <a class="skip-link" href="#main" (click)="$event.preventDefault(); focusMain()">Skip to content</a>
     <header class="site-header">
       <div class="inner">
         <a class="brand" routerLink="/" aria-label="ChayYarHub home">
-          <span class="brand-mark"><i class="ph-fill ph-footprints"></i></span>
+          <span class="brand-mark"><i aria-hidden="true" class="ph-fill ph-footprints"></i></span>
           ChayYarHub <small>ခြေရာ</small>
         </a>
-        <a class="nav-link" routerLink="/explore" routerLinkActive="active"><i class="ph ph-compass"></i><span class="hide-sm">Explore</span></a>
+        <a class="nav-link" routerLink="/explore" routerLinkActive="active" ariaCurrentWhenActive="page" aria-label="Explore"
+          ><i aria-hidden="true" class="ph ph-compass"></i><span class="hide-sm">Explore</span></a
+        >
         <span class="spacer"></span>
         <button
           type="button"
@@ -24,17 +30,17 @@ import { Avatar } from './shared/ui';
           [attr.aria-label]="'Switch to ' + (theme.mode() === 'dark' ? 'light' : 'dark') + ' mode'"
           [title]="'Switch to ' + (theme.mode() === 'dark' ? 'light' : 'dark') + ' mode'"
         >
-          <i class="ph" [class.ph-sun]="theme.mode() === 'dark'" [class.ph-moon]="theme.mode() === 'light'"></i>
+          <i aria-hidden="true" class="ph" [class.ph-sun]="theme.mode() === 'dark'" [class.ph-moon]="theme.mode() === 'light'"></i>
         </button>
         @if (session.user(); as user) {
-          <a class="btn btn-grad" routerLink="/new" title="New repository"><i class="ph ph-plus"></i><span class="hide-sm">New</span></a>
+          <a class="btn btn-grad" routerLink="/new" title="New repository"><i aria-hidden="true" class="ph ph-plus"></i><span class="hide-sm">New</span></a>
           <details class="dropdown">
             <summary class="btn icon-btn" aria-label="Account menu" title="Account"><cy-avatar [name]="user.username" [size]="30" /></summary>
             <div class="menu right">
               <div class="menu-title faint">Signed in as <strong class="soft">{{ user.username }}</strong></div>
-              <a [routerLink]="['/', user.username]"><i class="ph ph-user"></i>Your profile</a>
-              <a routerLink="/new"><i class="ph ph-plus"></i>New repository</a>
-              <button type="button" class="item" (click)="signOut()"><i class="ph ph-sign-out"></i>Sign out</button>
+              <a [routerLink]="['/', user.username]"><i aria-hidden="true" class="ph ph-user"></i>Your profile</a>
+              <a routerLink="/new"><i aria-hidden="true" class="ph ph-plus"></i>New repository</a>
+              <button type="button" class="item" (click)="signOut()"><i aria-hidden="true" class="ph ph-sign-out"></i>Sign out</button>
             </div>
           </details>
         } @else {
@@ -44,7 +50,8 @@ import { Avatar } from './shared/ui';
       </div>
     </header>
 
-    <main><router-outlet /></main>
+    <main id="main" tabindex="-1"><router-outlet /></main>
+    <div class="sr-only" role="status" aria-atomic="true">{{ announcer.message() }}</div>
 
     <footer class="site-footer">
       <div class="hairline"></div>
@@ -61,8 +68,29 @@ import { Avatar } from './shared/ui';
 export class App {
   protected readonly session = inject(Session);
   protected readonly theme = inject(Theme);
+  protected readonly announcer = inject(Announcer);
   private readonly router = inject(Router);
   protected readonly year = new Date().getFullYear();
+
+  constructor() {
+    // A new page moves keyboard and screen reader focus to its content, as a
+    // full page load would. Query-only changes (a tab, the next page) don't.
+    let path = location.pathname;
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        if (location.pathname === path) return;
+        path = location.pathname;
+        setTimeout(() => this.focusMain());
+      });
+  }
+
+  protected focusMain() {
+    document.getElementById('main')?.focus({ preventScroll: true });
+  }
 
   /** Menus are <details> elements: close them on a click outside, or on picking an item. */
   protected closeMenus(e: MouseEvent) {
@@ -70,6 +98,14 @@ export class App {
     for (const menu of document.querySelectorAll('details.dropdown[open]')) {
       if (!menu.contains(target) || target.closest('.menu a, .menu .item')) menu.removeAttribute('open');
     }
+  }
+
+  /** Escape closes an open menu and puts focus back on its button. */
+  protected closeOnEscape() {
+    const open = document.querySelector('details.dropdown[open]');
+    if (!open) return;
+    open.removeAttribute('open');
+    open.querySelector('summary')?.focus();
   }
 
   protected async signOut() {

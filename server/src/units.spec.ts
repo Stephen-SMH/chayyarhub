@@ -62,7 +62,13 @@ describe('markdown', () => {
     expect(html).not.toMatch(/<script|javascript:|onerror/);
     const tasks = render('- [x] done\n- [ ] todo\n\n<input type="text">');
     expect(tasks).toContain('type="checkbox"');
+    expect(tasks).toContain('aria-label="Done"');
+    expect(tasks).toContain('aria-label="Not done"');
     expect(tasks).not.toContain('type="text"');
+  });
+
+  it('starts user headings below the page heading', () => {
+    expect(render('# Title\n\n## Part')).toMatch(/<h2[^>]*>Title<\/h2>[\s\S]*<h3[^>]*>Part<\/h3>/);
   });
 
   it('points relative links into the repository', () => {
