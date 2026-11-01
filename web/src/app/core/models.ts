@@ -109,7 +109,7 @@ export interface Issue {
 
 export interface Comparison {
   commits: Commit[];
-  files: FileDiff[];
+  files: AnalyzedFile[];
   mergeable: boolean | null;
   conflicts: string[];
 }
@@ -122,4 +122,55 @@ export interface IssueDetail {
   can_close: boolean;
   can_merge: boolean;
   signed_in: boolean;
+}
+
+export type Group = 'code' | 'tests' | 'config' | 'docs' | 'assets' | 'generated';
+export type Noise = 'generated' | 'rename' | 'whitespace' | 'mode' | null;
+
+export interface SymbolChange {
+  name: string;
+  kind: string;
+  line: number;
+}
+
+export interface Symbols {
+  added: SymbolChange[];
+  changed: SymbolChange[];
+  removed: SymbolChange[];
+}
+
+/** A changed file with what it's for, whether it's noise, and the functions it touched. */
+export interface AnalyzedFile extends FileDiff {
+  group: Group;
+  noise: Noise;
+  symbols: Symbols | null;
+}
+
+export interface GroupStat {
+  files: number;
+  additions: number;
+  deletions: number;
+}
+
+/** A commit in the snapshot timeline, with its totals per group. */
+export interface Snapshot extends Commit {
+  stats: { files: number; additions: number; deletions: number; groups: Partial<Record<Group, GroupStat>> };
+}
+
+export interface Version {
+  sha: string;
+  short: string;
+  summary: string;
+  author: string;
+  date: number;
+  path: string;
+}
+
+export interface Blame {
+  sha: string;
+  path: string;
+  too_large: boolean;
+  binary: boolean;
+  lines: { text: string; sha: string }[];
+  commits: Record<string, { short: string; summary: string; author: string; date: number }>;
 }

@@ -366,3 +366,157 @@ export async function merge(repo: string, base: string, head: string, message: s
   await run(repo, ['update-ref', `refs/heads/${base}`, commitSha, baseSha]);
   return commitSha;
 }
+
+/** The tree of an empty repository: what a root commit is compared against. */
+export const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+
+/** The commit `base` and `head` last shared: the "before" side of a pull request. */
+export async function mergeBase(repo: string, base: string, head: string): Promise<string> {
+  return (await run(repo, ['merge-base', base, head])).trim();
+}
+
+/** A file's text at a commit, or null when it isn't there or is too big. */
+export async function textAt(repo: string, rev: string, path: string, max = 500_000): Promise<string | null> {
+  const size = await exec(repo, ['cat-file', '-s', `${rev}:${path}`]);
+  if (size.code !== 0 || Number(size.stdout.toString()) > max) return null;
+  const bytes = await runBytes(repo, ['cat-file', 'blob', `${rev}:${path}`]);
+  return bytes.subarray(0, 8000).includes(0) ? null : bytes.toString('utf8');
+}
+
+/**
+ * Lines changed per file when whitespace is ignored, keyed by path. A file
+ * with changes that drops to 0 here only had its spacing touched.
+ */
+export async function changesIgnoringSpace(repo: string, from: string, to: string): Promise<Map<string, number>> {
+  const out = await run(repo, ['diff', '-w', '--numstat', '--no-renames', '-z', from, to]);
+  const counts = new Map<string, number>();
+  for (const rec of out.split('\0')) {
+    const [adds, dels, ...path] = rec.split('\t');
+    if (path.length) counts.set(path.join('\t'), (Number(adds) || 0) + (Number(dels) || 0));
+  }
+  return counts;
+}
+
+export interface FileStat {
+  path: string;
+  additions: number;
+  deletions: number;
+}
+
+/** A commit with the files it touched, for the snapshot timeline. */
+export interface CommitWithStats extends Commit {
+  files: FileStat[];
+}
+
+/** Like `log`, with each commit's changed files (merges against their first parent). */
+export async function logWithStats(repo: string, sha: string, path: string | null, skip: number, limit: number): Promise<CommitWithStats[]> {
+  const args = [
+    'log',
+    '--format=%x1e%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%at%x1f%P%x1f%b%x1d',
+    '--numstat',
+    '--no-renames',
+    '--diff-merges=first-parent',
+    `--skip=${skip}`,
+    `-n${limit}`,
+    sha,
+  ];
+  if (path) args.push('--', path);
+  const out = await run(repo, args);
+  const commits: CommitWithStats[] = [];
+  for (const rec of out.split('\x1e')) {
+    const end = rec.indexOf('\x1d');
+    if (end < 0) continue;
+    const f = rec.slice(0, end).split('\x1f');
+    if (f.length < 8) continue;
+    const files = rec
+      .slice(end + 1)
+      .split('\n')
+      .map((l) => l.split('\t'))
+      .filter((p) => p.length >= 3)
+      .map(([a, d, ...p]) => ({ path: p.join('\t'), additions: Number(a) || 0, deletions: Number(d) || 0 }));
+    commits.push({
+      sha: f[0],
+      short: f[1],
+      summary: f[2],
+      author: f[3],
+      email: f[4],
+      date: Number(f[5]),
+      parents: f[6].split(' ').filter(Boolean),
+      body: f[7].trim(),
+      files,
+    });
+  }
+  return commits;
+}
+
+export interface Version {
+  sha: string;
+  short: string;
+  summary: string;
+  author: string;
+  date: number;
+  /** The file's name at this commit; it can change when the file was renamed. */
+  path: string;
+}
+
+/** Every commit that changed a file, newest first, following renames. Deletions are left out. */
+export async function fileVersions(repo: string, sha: string, path: string, limit = 200): Promise<Version[]> {
+  const out = await run(repo, ['log', '--follow', '--name-status', `-n${limit}`, '--format=%x1e%H%x1f%h%x1f%s%x1f%an%x1f%at', sha, '--', path]);
+  const versions: Version[] = [];
+  for (const rec of out.split('\x1e')) {
+    const [head, ...rest] = rec.split('\n');
+    const f = head.split('\x1f');
+    if (f.length < 5) continue;
+    const status = rest.find((l) => l.trim());
+    if (!status || status.startsWith('D')) continue;
+    const parts = status.split('\t');
+    versions.push({ sha: f[0], short: f[1], summary: f[2], author: f[3], date: Number(f[4]), path: parts[parts.length - 1] });
+  }
+  return versions;
+}
+
+export interface BlameLine {
+  text: string;
+  sha: string;
+}
+
+export interface BlameCommit {
+  short: string;
+  summary: string;
+  author: string;
+  date: number;
+}
+
+/** Which commit last changed each line of a file at commit `sha`. */
+export async function blame(repo: string, sha: string, path: string): Promise<{ lines: BlameLine[]; commits: Record<string, BlameCommit> }> {
+  const out = await run(repo, ['blame', '--porcelain', sha, '--', path]);
+  const lines: BlameLine[] = [];
+  const commits: Record<string, BlameCommit> = {};
+  let current = '';
+  for (const line of out.split('\n')) {
+    if (line.startsWith('\t')) {
+      lines.push({ text: line.slice(1), sha: current });
+      continue;
+    }
+    const header = /^([0-9a-f]{40}) \d+ \d+/.exec(line);
+    if (header) {
+      current = header[1];
+      commits[current] ??= { short: current.slice(0, 7), summary: '', author: '', date: 0 };
+      continue;
+    }
+    const space = line.indexOf(' ');
+    const key = line.slice(0, space);
+    const value = line.slice(space + 1);
+    const c = commits[current];
+    if (!c) continue;
+    if (key === 'author') c.author = value;
+    else if (key === 'author-time') c.date = Number(value);
+    else if (key === 'summary') c.summary = value;
+  }
+  return { lines, commits };
+}
+
+/** A commit's message and patch as text, for KuMal to read. */
+export async function showPatch(repo: string, from: string, to: string): Promise<string> {
+  return run(repo, ['diff', '-M', '--stat', '--patch', '--no-color', '--no-ext-diff', from, to]);
+}

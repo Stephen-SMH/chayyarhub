@@ -6,6 +6,7 @@ import { filter, map } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Api, errorText } from '../core/api';
 import { Announcer } from '../core/announcer';
+import { I18n } from '../core/i18n';
 import { RepoContext } from './context';
 
 /** The header every repository page shares: name, visibility, star, tabs. */
@@ -45,21 +46,22 @@ import { RepoContext } from './context';
           <p class="soft" style="margin: 8px 0 0">{{ description }}</p>
         }
         <nav class="tabs" aria-label="Repository">
-          <a class="tab" [class.active]="section() === 'code'" [attr.aria-current]="section() === 'code' ? 'page' : null" [routerLink]="ctx.base()"><i aria-hidden="true" class="ph ph-code"></i>Code</a>
+          <a class="tab" [class.active]="section() === 'code'" [attr.aria-current]="section() === 'code' ? 'page' : null" [routerLink]="ctx.base()"><i aria-hidden="true" class="ph ph-code"></i>{{ i18n.t('code') }}</a>
+          <a class="tab" [class.active]="section() === 'snapshots'" [attr.aria-current]="section() === 'snapshots' ? 'page' : null" [routerLink]="ctx.link('commits')"><i aria-hidden="true" class="ph ph-footprints"></i>{{ i18n.t('snapshots') }}</a>
           <a class="tab" [class.active]="section() === 'issues'" [attr.aria-current]="section() === 'issues' ? 'page' : null" [routerLink]="ctx.link('issues')">
-            <i aria-hidden="true" class="ph ph-record"></i>Issues
+            <i aria-hidden="true" class="ph ph-record"></i>{{ i18n.t('issues') }}
             @if (ctx.info(); as m) {
               <span class="count">{{ m.open_issues }}</span>
             }
           </a>
           <a class="tab" [class.active]="section() === 'pulls'" [attr.aria-current]="section() === 'pulls' ? 'page' : null" [routerLink]="ctx.link('pulls')">
-            <i aria-hidden="true" class="ph ph-git-pull-request"></i>Pull requests
+            <i aria-hidden="true" class="ph ph-git-pull-request"></i>{{ i18n.t('pulls') }}
             @if (ctx.info(); as m) {
               <span class="count">{{ m.open_pulls }}</span>
             }
           </a>
           @if (ctx.info()?.is_owner) {
-            <a class="tab" [class.active]="section() === 'settings'" [attr.aria-current]="section() === 'settings' ? 'page' : null" [routerLink]="ctx.link('settings')"><i aria-hidden="true" class="ph ph-gear"></i>Settings</a>
+            <a class="tab" [class.active]="section() === 'settings'" [attr.aria-current]="section() === 'settings' ? 'page' : null" [routerLink]="ctx.link('settings')"><i aria-hidden="true" class="ph ph-gear"></i>{{ i18n.t('settings') }}</a>
           }
         </nav>
       </div>
@@ -80,6 +82,7 @@ import { RepoContext } from './context';
 })
 export class RepoShell {
   protected readonly ctx = inject(RepoContext);
+  protected readonly i18n = inject(I18n);
   private readonly api = inject(Api);
   private readonly announcer = inject(Announcer);
   private readonly router = inject(Router);
@@ -95,6 +98,7 @@ export class RepoShell {
     const first = this.url().split(/[?#]/)[0].split('/')[3] ?? '';
     if (first === 'issues') return 'issues';
     if (first === 'pulls' || first === 'pull' || first === 'compare') return 'pulls';
+    if (first === 'commits' || first === 'commit' || first === 'travel') return 'snapshots';
     return first === 'settings' ? 'settings' : 'code';
   });
   protected readonly errorText = errorText;

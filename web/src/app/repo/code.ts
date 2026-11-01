@@ -6,6 +6,8 @@ import { ago, copyText, day, plural, size, splitRefPath } from '../core/format';
 import type { Contents, Entry } from '../core/models';
 import { Avatar, MarkdownView } from '../shared/ui';
 import { Announcer } from '../core/announcer';
+import { I18n } from '../core/i18n';
+import { highlighter, highlightLines } from '../shared/diff-model';
 import { RepoContext } from './context';
 
 /** The file browser: folders, files and READMEs, at any branch, tag or commit. */
@@ -159,6 +161,9 @@ git push -u origin main</pre>
                     <button type="button" [attr.aria-pressed]="showSource()" (click)="showSource.set(true)">Code</button>
                   </div>
                 }
+                @if (f.text !== null) {
+                  <a class="btn" style="min-height: 36px" [routerLink]="ctx.link('travel', f.ref, f.path)" [title]="i18n.t('timeTravelHelp')"><i aria-hidden="true" class="ph ph-clock-counter-clockwise"></i><span class="hide-sm">{{ i18n.t('timeTravel') }}</span></a>
+                }
                 <a class="btn" style="min-height: 36px" [href]="ctx.rawUrl(f.ref, f.path)" target="_blank" rel="noopener">Raw</a>
                 @if (f.text !== null) {
                   <button type="button" class="btn icon-btn" style="min-height: 36px; width: 36px" (click)="copy(f.text, 'File contents copied')" title="Copy file contents" aria-label="Copy file contents">
@@ -181,7 +186,7 @@ git push -u origin main</pre>
                       @for (l of lines(); track $index) {
                         <tr>
                           <td class="ln">{{ $index + 1 }}</td>
-                          <td class="src">{{ l }}</td>
+                          <td class="src" [innerHTML]="coloured()[$index]"></td>
                         </tr>
                       }
                     </tbody>
@@ -244,6 +249,10 @@ export class CodePage {
     const f = this.file();
     return f?.text != null ? f.text.replace(/\n$/, '').split('\n') : [];
   });
+  private readonly hl = signal<Awaited<ReturnType<typeof highlighter>> | null>(null);
+  /** The file's lines as HTML, coloured once highlight.js has loaded. */
+  protected readonly coloured = computed(() => highlightLines(this.hl(), this.lines(), this.file()?.path ?? ''));
+  protected readonly i18n = inject(I18n);
   protected readonly isImage = computed(() => /\.(png|jpe?g|gif|webp|svg|ico)$/i.test(this.file()?.path ?? ''));
   protected readonly showSource = signal(false);
   protected readonly copied = signal(false);
@@ -252,6 +261,10 @@ export class CodePage {
   protected readonly size = size;
   protected readonly plural = plural;
   protected readonly errorText = errorText;
+
+  constructor() {
+    highlighter().then((h) => this.hl.set(h));
+  }
 
   protected icon(e: Entry): string {
     if (e.kind === 'dir') return 'ph ph-folder-simple dir';

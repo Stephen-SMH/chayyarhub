@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { Api, apiUrl, errorText } from '../core/api';
 import { ago, plural } from '../core/format';
 import type { IssueDetail } from '../core/models';
-import { DiffView } from '../shared/diff';
+import { ChangesView } from '../shared/changes';
 import { Avatar, MarkdownEditor, MarkdownView } from '../shared/ui';
 import { Announcer } from '../core/announcer';
 import { RepoContext, issueIcon, statePill } from './context';
@@ -19,7 +19,7 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
 /** An issue or a pull request: the conversation, and for a pull request its commits, files and merge box. */
 @Component({
   selector: 'cy-issue',
-  imports: [RouterLink, Avatar, MarkdownView, MarkdownEditor, DiffView],
+  imports: [RouterLink, Avatar, MarkdownView, MarkdownEditor, ChangesView],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page stack" style="max-width: 1040px">
@@ -86,7 +86,7 @@ const EVENTS: Record<string, { icon: string; text: string }> = {
             }
           </div>
         } @else if (tab() === 'files' && d.pull) {
-          <cy-diff [files]="d.pull.files" />
+          <cy-changes [files]="d.pull.files" [explain]="{ pull: i.number }" [at]="i.state === 'open' && d.pull.head_exists ? i.head : null" />
         } @else {
           <div class="timeline">
             <div class="comment">

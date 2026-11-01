@@ -18,6 +18,7 @@ const exec = promisify(execFile);
 const tmp = mkdtempSync(join(tmpdir(), 'chayyar-e2e-'));
 process.env.CHAYYAR_DATA = join(tmp, 'data');
 process.env.CHAYYAR_WEB = join(tmp, 'no-web-build');
+process.env.CHAYYAR_KUMAL = 'off'; // never call Claude from tests
 
 /** Git as a user runs it, except it never prompts or touches the real keychain. */
 async function git(cwd: string, ...args: string[]): Promise<string> {
@@ -237,6 +238,61 @@ describe('issues and pull requests', () => {
     const merge = await ada.post('/api/repos/ada/notes/pulls/3/merge');
     expect(merge.status).toBe(409);
     expect(merge.body.message).toContain('README.md');
+  });
+});
+
+describe('snapshots', () => {
+  it('explains what a snapshot changed, and plays back a file', async () => {
+    const ada = request.agent(base);
+    await ada.post('/api/login').send({ username: 'ada', password: PASSWORD }).expect(200);
+    await ada.post('/api/repos').send({ name: 'shop' }).expect(201);
+    const local = workdir('shop');
+    await git(local, 'init', '-q');
+    mkdirSync(join(local, 'src'));
+    writeFileSync(join(local, 'src', 'cart.ts'), 'export function total(items: number[]) {\n  return items.length;\n}\n');
+    writeFileSync(join(local, 'package-lock.json'), '{}\n');
+    await git(local, 'add', '-A');
+    await git(local, 'commit', '-qm', 'Start the cart');
+    writeFileSync(join(local, 'src', 'cart.ts'), 'export function total(items: number[]) {\n  return items.reduce((a, b) => a + b, 0);\n}\n\nexport function empty() {\n  return [];\n}\n');
+    writeFileSync(join(local, 'package-lock.json'), '{ "lockfileVersion": 3 }\n');
+    writeFileSync(join(local, 'README.md'), '# Shop\n');
+    await git(local, 'add', '-A');
+    await git(local, 'commit', '-qm', 'Add up prices');
+    await git(local, 'push', '-q', remote('ada/shop.git', 'ada'), 'main');
+
+    const { commits } = (await ada.get('/api/repos/ada/shop/commits')).body;
+    expect(commits[0].stats).toMatchObject({ files: 3, groups: { code: { files: 1 }, generated: { files: 1 }, docs: { files: 1 } } });
+    expect(commits[1].stats.files).toBe(2);
+
+    const { files } = (await ada.get(`/api/repos/ada/shop/commits/${commits[0].sha}`)).body;
+    const cart = files.find((f: { path: string }) => f.path === 'src/cart.ts');
+    expect(cart).toMatchObject({ group: 'code', noise: null });
+    expect(cart.symbols.added.map((s: { name: string }) => s.name)).toEqual(['empty']);
+    expect(cart.symbols.changed.map((s: { name: string }) => s.name)).toEqual(['total']);
+    expect(files.find((f: { path: string }) => f.path === 'package-lock.json')).toMatchObject({ group: 'generated', noise: 'generated' });
+
+    const history = (await ada.get('/api/repos/ada/shop/file-history').query({ path: 'src/cart.ts' })).body;
+    expect(history.versions.map((v: { summary: string }) => v.summary)).toEqual(['Add up prices', 'Start the cart']);
+    const old = (await ada.get('/api/repos/ada/shop/blame').query({ ref: history.versions[1].sha, path: 'src/cart.ts' })).body;
+    expect(old.lines).toHaveLength(3);
+    const now = (await ada.get('/api/repos/ada/shop/blame').query({ ref: history.versions[0].sha, path: 'src/cart.ts' })).body;
+    const by = now.lines.map((l: { sha: string }) => now.commits[l.sha].summary);
+    expect(by).toHaveLength(7);
+    expect(by.slice(0, 2)).toEqual(['Start the cart', 'Add up prices']);
+
+    expect((await request(base).post('/api/repos/ada/shop/explain').send({ sha: commits[0].sha })).status).toBe(401);
+    expect((await ada.post('/api/repos/ada/shop/explain').send({ sha: commits[0].sha })).status).toBe(503);
+  });
+
+  it('marks changes that only touch spacing', async () => {
+    const ada = request.agent(base);
+    await ada.post('/api/login').send({ username: 'ada', password: PASSWORD }).expect(200);
+    const local = join(tmp, 'work', 'shop');
+    writeFileSync(join(local, 'src', 'cart.ts'), 'export function total(items: number[]) {\n    return items.reduce((a, b) => a + b, 0);\n}\n\nexport function empty() {\n    return [];\n}\n');
+    await git(local, 'commit', '-qam', 'Indent with four spaces');
+    await git(local, 'push', '-q', remote('ada/shop.git', 'ada'), 'main');
+    const { files } = (await ada.get('/api/repos/ada/shop/commits/main')).body;
+    expect(files[0]).toMatchObject({ path: 'src/cart.ts', noise: 'whitespace', symbols: null });
   });
 });
 

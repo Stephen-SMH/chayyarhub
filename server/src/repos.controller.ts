@@ -17,6 +17,7 @@ import {
 import type { Request } from 'express';
 import { rmSync, existsSync } from 'node:fs';
 import { repoNameProblem } from './auth.js';
+import { analyze, summarize } from './changes.js';
 import { Config } from './config.js';
 import { DbService, isUniqueViolation, publicRepo, type User } from './db.service.js';
 import { NewRepoDto, RepoSettingsDto } from './dto.js';
@@ -42,14 +43,14 @@ export function repoLinks(ctx: RepoCtx, rev: string, dir: string): Links {
   return { blob: `${base}/blob/${at}`, raw: `${base}/raw/${at}` };
 }
 
-function cleanPath(p: string | undefined): string {
+export function cleanPath(p: string | undefined): string {
   const path = (p ?? '').replace(/^\/+|\/+$/g, '');
   if (path.includes('\0') || path.split('/').some((seg) => seg === '.' || seg === '..')) throw new BadRequestException('Bad path.');
   return path;
 }
 
 /** The branch, tag or commit asked for (the default branch if none), and its SHA. */
-async function pickRev(ctx: RepoCtx, rev: string | undefined): Promise<{ rev: string; sha: string }> {
+export async function pickRev(ctx: RepoCtx, rev: string | undefined): Promise<{ rev: string; sha: string }> {
   const name = rev || (await git.defaultBranch(ctx.dir));
   if (!name) throw new NotFoundException('This repository is empty.');
   const sha = await git.resolve(ctx.dir, name);
@@ -200,8 +201,10 @@ export class ReposController {
     const ctx = this.access.repo(viewer, owner, name);
     const { rev, sha } = await pickRev(ctx, ref);
     const skip = Math.max(0, Number(page) || 0) * COMMITS_PER_PAGE;
-    const list = await git.log(ctx.dir, sha, cleanPath(rawPath) || null, skip, COMMITS_PER_PAGE + 1);
-    return { ref: rev, commits: list.slice(0, COMMITS_PER_PAGE), has_more: list.length > COMMITS_PER_PAGE };
+    const list = await git.logWithStats(ctx.dir, sha, cleanPath(rawPath) || null, skip, COMMITS_PER_PAGE + 1);
+    // Each snapshot carries totals per group instead of its file list.
+    const commits = list.slice(0, COMMITS_PER_PAGE).map(({ files, ...c }) => ({ ...c, stats: summarize(files) }));
+    return { ref: rev, commits, has_more: list.length > COMMITS_PER_PAGE };
   }
 
   @Get('repos/:owner/:repo/commits/:sha')
@@ -209,7 +212,9 @@ export class ReposController {
     const ctx = this.access.repo(viewer, owner, name);
     const sha = await git.resolve(ctx.dir, rev);
     if (!sha) throw new NotFoundException('No such commit.');
-    return { commit: await git.commit(ctx.dir, sha), files: await git.commitDiff(ctx.dir, sha) };
+    const commit = await git.commit(ctx.dir, sha);
+    const files = await analyze(ctx.dir, await git.commitDiff(ctx.dir, sha), commit.parents[0] ?? git.EMPTY_TREE, sha);
+    return { commit, files };
   }
 
   @Get('repos/:owner/:repo/branches')
@@ -249,7 +254,7 @@ export async function branchSha(ctx: RepoCtx, name: string | undefined): Promise
 /** Commits, changed files and (optionally) mergeability of `head` against `base`. */
 export async function compareShas(ctx: RepoCtx, base: string, head: string, checkMerge: boolean) {
   const commits = await git.commitsBetween(ctx.dir, base, head);
-  const files = commits.length ? await git.rangeDiff(ctx.dir, base, head) : [];
+  const files = commits.length ? await analyze(ctx.dir, await git.rangeDiff(ctx.dir, base, head), await git.mergeBase(ctx.dir, base, head), head) : [];
   let mergeable: boolean | null = null;
   let conflicts: string[] = [];
   if (checkMerge && commits.length) {

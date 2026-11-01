@@ -5,14 +5,14 @@ import { Router, RouterLink } from '@angular/router';
 import { Api, apiUrl, errorText } from '../core/api';
 import { ago, plural } from '../core/format';
 import type { Comparison } from '../core/models';
-import { DiffView } from '../shared/diff';
+import { ChangesView } from '../shared/changes';
 import { Avatar, MarkdownEditor } from '../shared/ui';
 import { RepoContext } from './context';
 
 /** Pick two branches, see what would change, and open a pull request. */
 @Component({
   selector: 'cy-compare',
-  imports: [FormsModule, RouterLink, Avatar, MarkdownEditor, DiffView],
+  imports: [FormsModule, RouterLink, Avatar, MarkdownEditor, ChangesView],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let m = ctx.info()!;
@@ -93,7 +93,7 @@ import { RepoContext } from './context';
               </div>
             }
           </div>
-          <cy-diff [files]="c.files" />
+          <cy-changes [files]="c.files" [at]="head()" />
         }
       } @else {
         <div class="loading">Comparing…</div>

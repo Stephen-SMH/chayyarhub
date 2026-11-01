@@ -6,9 +6,10 @@ import { GitHttpController } from './git-http.controller.js';
 import { Access, SameOriginMiddleware, ViewerMiddleware } from './http.js';
 import { IssuesController } from './issues.controller.js';
 import { ReposController } from './repos.controller.js';
+import { SnapshotsController } from './snapshots.controller.js';
 
 @Module({
-  controllers: [AccountsController, ReposController, IssuesController, GitHttpController],
+  controllers: [AccountsController, ReposController, IssuesController, SnapshotsController, GitHttpController],
   providers: [Config, DbService, Access],
 })
 export class AppModule implements NestModule {

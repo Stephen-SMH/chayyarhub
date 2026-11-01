@@ -35,6 +35,7 @@ export const routes: Routes = [
       { matcher: rest('blob'), loadComponent: code },
       { path: 'commits', loadComponent: commits },
       { matcher: rest('commits'), loadComponent: commits },
+      { matcher: rest('travel'), loadComponent: () => import('./repo/travel').then((m) => m.TravelPage) },
       { path: 'commit/:sha', loadComponent: () => import('./repo/commits').then((m) => m.CommitPage) },
       { path: 'branches', loadComponent: () => import('./repo/branches').then((m) => m.BranchesPage) },
       { path: 'issues', loadComponent: issues, data: { pulls: false } },

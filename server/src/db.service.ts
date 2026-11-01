@@ -60,6 +60,13 @@ CREATE TABLE IF NOT EXISTS comments (
   body       TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL
 );
+-- KuMal's plain-language explanations, kept so each change is explained once per language.
+CREATE TABLE IF NOT EXISTS explanations (
+  key        TEXT PRIMARY KEY,
+  repo_id    INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+  text       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 `;
 
 export interface User {
@@ -238,6 +245,16 @@ export class DbService implements OnModuleDestroy {
 
   starred(userId: number, repoId: number): boolean {
     return !!this.db.prepare('SELECT 1 FROM stars WHERE user_id = ? AND repo_id = ?').get(userId, repoId);
+  }
+
+  // ---- KuMal ----
+
+  explanation(key: string): string | undefined {
+    return (this.db.prepare('SELECT text FROM explanations WHERE key = ?').get(key) as { text: string } | undefined)?.text;
+  }
+
+  saveExplanation(key: string, repoId: number, text: string) {
+    this.db.prepare('INSERT OR REPLACE INTO explanations (key, repo_id, text, created_at) VALUES (?, ?, ?, ?)').run(key, repoId, text, now());
   }
 
   // ---- issues and pull requests ----

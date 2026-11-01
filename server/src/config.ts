@@ -14,6 +14,9 @@ export class Config {
   readonly publicUrl = process.env.CHAYYAR_URL?.replace(/\/+$/, '') || undefined;
   readonly secureCookies = !!this.publicUrl?.startsWith('https://');
   /** The built Angular app. This file sits in server/src or server/dist, two levels below the project. */
+  /** KuMal, the plain-language explainer: off when CHAYYAR_KUMAL=off. */
+  readonly kumal = process.env.CHAYYAR_KUMAL !== 'off';
+  readonly kumalModel = process.env.CHAYYAR_KUMAL_MODEL || 'claude-opus-5-5';
   readonly webDist = process.env.CHAYYAR_WEB ?? fileURLToPath(new URL('../../web/dist/', import.meta.url));
 
   repoDir(id: number): string {

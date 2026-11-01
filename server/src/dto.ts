@@ -1,6 +1,6 @@
 // Request bodies, checked by Nest's ValidationPipe before a handler runs.
 
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CredentialsDto {
   @IsString() username: string;
@@ -36,4 +36,10 @@ export class StateDto {
 
 export class PreviewDto {
   @IsString() @MaxLength(65536) text: string;
+}
+
+export class ExplainDto {
+  @IsOptional() @IsString() sha?: string;
+  @IsOptional() @IsInt() pull?: number;
+  @IsOptional() @IsIn(['en', 'my']) lang?: 'en' | 'my';
 }
